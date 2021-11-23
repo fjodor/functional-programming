@@ -1,0 +1,250 @@
+---
+title: "R Programming: <br>Replacing For Loops with lapply"
+subtitle: "when Creating Several Plots"
+author: "StatistikinDD"
+date: "Presentation Created: `r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    chakra: libs/remark-latest.min.js
+    lib_dir: libs
+    css: ["xaringan-themer.css", "libs/_css/my_css.css"]
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+      ratio: 16:9
+---
+
+```{r setup, include = FALSE}
+
+options(htmltools.dir.version = FALSE)
+# knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = "")
+knitr::opts_chunk$set(echo = TRUE, comment = "")
+xaringanthemer::style_mono_accent(title_slide_background_color = "#EDF4FB",
+                                  title_slide_text_color = "#000000",
+                                  base_font_size = "18px")
+Sys.setenv(LANG = "en")
+
+# Trick to suppress lapply's list output
+# Source: https://stackoverflow.com/questions/54300147/suppress-list-notation-in-rmarkdown-from-lapply
+
+def <- knitr::knit_hooks$get("output")
+knitr::knit_hooks$set(output = function(x, options) {
+  x <- def(x, options)
+  ifelse(!is.null(options$suppress), gsub(pattern = "```.*```", "", x), x)
+})
+
+```
+
+# The Data
+
+## mpg {ggplot2}: Fuel economy data from 1999 to 2008 for 38 popular models of cars
+
+```{r mpg-data, message = FALSE}
+
+library(tidyverse)
+glimpse(mpg)
+
+```
+
+---
+
+# The Data
+
+## Which Manufacturers?
+
+.pull-left[
+```{r mpg-manuf, eval = FALSE}
+
+theme_set(ggthemes::theme_gdocs(base_size = 14))
+
+mpg <- mpg %>%
+  mutate(manuf_c = fct_lump_min(manufacturer,#<<
+                                min = 20))
+
+ggplot(mpg, aes(y = fct_rev(
+                fct_infreq(manufacturer)))) +
+  geom_bar(aes(fill = manuf_c)) +
+  scale_fill_manual(values = c( #<<
+        scales::hue_pal()(4), "grey50"),
+        name = "") + #<<
+  labs(title = "Manufacturers in the mpg Dataset",
+       x = "Count", y = "Manufacturer")
+
+```
+
+]
+
+.pull-right[
+```{r, ref.label = "mpg-manuf", echo = FALSE}
+```
+
+]
+
+---
+
+# Fuel Efficiency (City Miles per Gallon) <br>vs. Engine Displacement
+
+.pull-left[
+
+```{r plot, eval = FALSE}
+
+ggplot(mpg, aes(x = displ, y = cty,
+                color = manuf_c)) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c(
+        scales::hue_pal()(4), "grey50"),
+        name = "Manufacturer") +
+  labs(title = "Fuel Efficiency vs. Engine Displacement",
+       x = "Displacement", y = "City Miles per Gallon")
+
+```
+
+* Not so easy to distinguish manufacturers
+* Could use facets, but here we want separate plots
+
+]
+
+.pull-right[
+```{r, ref.label = "plot", echo = FALSE}
+```
+
+]
+
+---
+
+# One Plot per Manufacturer: A For Loop?
+
+.pull-left[
+```{r loop, eval = FALSE}
+
+for(i in levels(mpg$manuf_c)) { #<<
+  p <- mpg %>%  #<<
+    filter(manuf_c == i) %>% 
+    ggplot(aes(x = displ, y = cty)) +
+      geom_point(size = 3) +
+      geom_smooth(method = "lm", color = "blue") +
+      labs(title = "Fuel Eff vs. Displmt",
+           subtitle = paste("Manufacturer:", i),
+           x = "Displacement", y = "City Miles per Gallon") +
+    ggthemes::theme_gdocs(base_size = 10)
+    print(p)  #<<
+    # ggsave(p, filename = paste0("mpg_", i, ".png"))
+} #<<
+
+```
+]
+
+.pull-right[
+```{r, ref.label = "loop", fig.show = "hold", echo = FALSE, fig.width = 3, fig.height = 3, message = FALSE}
+```
+
+]
+
+---
+
+# A Functional Programming Approach
+
+.pull-left[
+
+### Defining Our Plotting Function
+
+```{r function-def}
+
+my_plot <- function(manuf) { #<<
+  mpg %>%
+    filter(manuf_c == manuf) %>% #<<
+    ggplot(aes(x = displ, y = cty)) +
+      geom_point(size = 3) +
+      geom_smooth(method = "lm", color = "blue") +
+      labs(title = "Fuel Eff vs. Displmt",
+           subtitle = paste("Manufacturer:", manuf)) + #<<
+    ggthemes::theme_gdocs(base_size = 10)
+}
+
+```
+]
+
+--
+
+.pull-right[
+### Applying the Function
+
+```{r function-app, fig.show = "hold", fig.width = 3, fig.height = 3, message = FALSE}
+
+my_plot("dodge")
+my_plot("Other")
+
+```
+
+]
+
+---
+
+# lapply: A One-Liner to Avoid<br>Copy & Paste & loops
+
+.pull-left[
+```{r lapply, eval = FALSE}
+
+manufs <- levels(mpg$manuf_c)
+
+lapply(manufs, my_plot) #<<
+
+```
+
+* No print statement required
+
+* If you want to save plots, you can assign to an object (p) and use  
+  `ggsave(p, file = ...)`  
+  inside the user-defined function
+
+]
+
+.pull-right[
+```{r, ref.label = "lapply", echo = FALSE, fig.show = "hold", fig.width = 3, fig.height = 3, message = FALSE, suppress = TRUE}
+```
+
+]
+
+---
+
+# Last Words
+
+### lapply() extends well to advanced use cases
+* **See my videos on running R code in parallel: *parallel::clusterApply() / clusterApplyLB()* **
+* **Processing large datasets in chunks: *iotools::chunk.apply()* **
+
+--
+
+### Loops can be run in parallel using *foreach* and *%dopar%*
+
+--
+
+### Note that lapply() returns a list
+* **Output like [[1]] ... [[2]] ... [[3]] ... etc. in console / Markown document**
+* **Suppressed here for sake of presentation**
+* **Use *purrr::walk()* instead of lapply to return plots silently**
+
+--
+
+### Possible to avoid explicit function assignment
+* **Create anonymous (unnamed, unassigned) function inside lapply**
+
+---
+
+class: center, middle
+
+# Thanks!
+
+### Youtube: StatistikinDD
+
+### Twitter: @StatistikinDD
+
+### github: fjodor
+
+Slides created via the R package [**xaringan**](https://github.com/yihui/xaringan).
+
+The chakra comes from [remark.js](https://remarkjs.com), [**knitr**](https://yihui.org/knitr), and [R Markdown](https://rmarkdown.rstudio.com).
+
+Thanks to **Yihui Xie** for *{knitr}* and *{xaringan}* and **Garrick Aden-Buie** for *{xaringanthemer}*.
