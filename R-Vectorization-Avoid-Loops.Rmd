@@ -1,0 +1,145 @@
+---
+title: "Vectorization in R"
+subtitle: "Avoiding Loops using Vectorized Functions"
+author: "StatistikinDD"
+date: "Presentation Created: `r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    chakra: libs/remark-latest.min.js
+    lib_dir: libs
+    css: ["libs/_css/xaringan-themer.css", "libs/_css/my_css.css"]
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+      ratio: 16:9
+---
+
+```{r setup, include = FALSE}
+
+options(htmltools.dir.version = FALSE)
+# knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = "")
+knitr::opts_chunk$set(echo = TRUE, comment = "")
+
+```
+
+# Starwars Data from dplyr
+
+```{r, message = FALSE}
+
+library(tidyverse)
+library(knitr)
+
+str(starwars, max.level = 2)
+
+```
+
+---
+
+# Starwars: Species
+
+```{r}
+
+starwars$species %>% as.factor() %>% levels()
+
+```
+
+```{r}
+
+starwars$species %>% as.factor() %>% 
+  forcats::fct_lump_min(min = 3) %>% #<<
+  forcats::fct_infreq() %>% forcats::fct_relevel("Other", after = Inf) %>%#<<
+  table()
+
+```
+
+---
+
+# Starwars: Droids
+
+## A For Loop
+
+```{r}
+
+droids <- starwars %>% 
+  filter(species == "Droid") %>% 
+  pull(name)
+
+for (i in seq_along(droids)) { #<<
+  print(droids[i]) #<<
+} #<<
+
+```
+
+---
+
+# Starwars: Length of Droid Names
+
+## A For Loop
+
+```{r}
+
+for (i in seq_along(droids)) { #<<
+  cat(paste("\n", droids[i], "contains", nchar(droids[i]), "characters.")) #<<
+} #<<
+
+```
+
+---
+
+# Starwars: Length of Droid Names
+
+## Vectorization: No For Loop Required!
+
+```{r}
+
+droids
+
+cat(paste("\n", droids, "contains", nchar(droids), "characters.")) #<<
+
+```
+
+---
+
+# Outlook: Iteration
+
+.pull-left[
+## apply Functions
+
+* Iterate over elements of vectors and lists using the **apply** family of functions:  
+  **apply, lapply, sapply, tapply, etc.**
+
+## The purrr Package
+
+* More consistent function parameters
+* Type stability
+* **map, map_int, map_dbl, map_chr, map_dfr, map_dfc, etc.**  
+* **walk** variants when calling functions purely for side effects, like plots or saving files
+]
+
+.pull-right[
+## Base R
+
+<br><br><br>
+
+![purrr logo](libs/_Images/logo_purrr.png)
+]
+
+---
+
+class: center, middle
+
+# Thanks!
+
+### Youtube: StatistikinDD
+
+### Twitter: @StatistikinDD
+
+### github: fjodor
+
+Slides created via the R package [**xaringan**](https://github.com/yihui/xaringan).
+
+The chakra comes from [remark.js](https://remarkjs.com), [**knitr**](https://yihui.org/knitr), and [R Markdown](https://rmarkdown.rstudio.com).
+
+Thanks to **Yihui Xie** for *{knitr}* and *{xaringan}* and **Garrick Aden-Buie** for *{xaringanthemer}*.
